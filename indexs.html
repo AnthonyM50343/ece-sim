@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
+    <title>ECE Ultimate Reviewer</title>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --bg: #f8fafc; --surface: #ffffff; --primary: #2563eb; --primary-hover: #1d4ed8;
+            --text: #1e293b; --text-light: #64748b; --border: #e2e8f0;
+            --correct: #16a34a; --correct-bg: #dcfce7; --wrong: #dc2626; --wrong-bg: #fee2e2;
+            --sidebar: #ffffff; --warning: #eab308; --warning-dark: #ca8a04;
+        }
+
+        .dark-mode {
+            --bg: #0f172a; --surface: #1e293b; --primary: #3b82f6; --primary-hover: #60a5fa;
+            --text: #f8fafc; --text-light: #94a3b8; --border: #334155;
+            --sidebar: #1e293b; --correct: #22c55e; --correct-bg: #14532d;
+            --wrong: #ef4444; --wrong-bg: #7f1d1d; --warning: #eab308;
+        }
+
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; display: flex; height: 100vh; overflow: hidden; transition: background-color 0.3s, color 0.3s; }
+
+        .sidebar { width: 250px; background-color: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px 0; transition: background-color 0.3s; overflow-y: auto; }
+        .sidebar h2 { text-align: center; color: var(--primary); margin-bottom: 20px; font-size: 1.5rem; }
+        .sidebar h4 { margin: 15px 25px 5px; color: var(--text-light); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; }
+
+        .nav-btn { background: none; border: none; padding: 12px 25px; text-align: left; font-size: 1rem; cursor: pointer; color: var(--text-light); border-left: 4px solid transparent; width: 100%; transition: all 0.2s; display: flex; align-items: center; gap: 10px; }
+        .nav-btn:hover { background-color: var(--bg); color: var(--primary); }
+        .nav-btn.active { background-color: rgba(37, 99, 235, 0.1); color: var(--primary); border-left-color: var(--primary); font-weight: bold; }
+
+        .main-content { flex: 1; padding: 30px; overflow-y: auto; }
+        .view { display: none; max-width: 1100px; margin: 0 auto; }
+        .view.active { display: block; }
+
+        h1 { border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        h3.section-header { margin-top: 30px; color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 5px; display: flex; align-items: center; gap: 15px;}
+        
+        button { background-color: var(--primary); color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; transition: opacity 0.2s; }
+        button:hover { opacity: 0.9; }
+        button.secondary { background-color: var(--text-light); }
+        button.danger { background-color: var(--wrong); }
+        button.warning { background-color: var(--warning); color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+        button.icon-btn { background: none; border: none; padding: 5px; cursor: pointer; color: var(--text-light); font-size: 1.2rem; }
+        button.icon-btn:hover { color: var(--primary); }
+
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; }
+        .flex-gap { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        
+        .tag { background: rgba(37, 99, 235, 0.1); color: var(--primary); padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; margin-right: 5px; font-weight: bold; display: inline-block; margin-bottom: 5px; }
+
+        textarea, input[type="text"], input[type="url"], select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; box-sizing: border-box; background: var(--bg); color: var(--text); margin-bottom: 15px; font-family: inherit; }
+        textarea { height: 250px; font-family: monospace; }
+
+        .option-label { display: block; padding: 12px 15px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; cursor: pointer; transition: background 0.2s; }
+        .option-label:hover { background: rgba(37, 99, 235, 0.05); }
+        .option-label.selected { border-color: var(--primary); background: rgba(37, 99, 235, 0.1); }
+        .option-label.correct { background-color: var(--correct-bg); border-color: var(--correct); color: var(--correct); font-weight: bold; }
+        .option-label.wrong { background-color: var(--wrong-bg); border-color: var(--wrong); color: var(--wrong); text-decoration: line-through; }
+        .strike { text-decoration: line-through; opacity: 0.5; }
+
+        #timer-display { font-size: 2rem; font-weight: bold; color: var(--primary); text-align: center; margin-bottom: 20px; font-family: monospace; letter-spacing: 2px;}
+        .chart-container { height: 300px; position: relative; }
+        .shortcut-hint { font-size: 0.8rem; color: var(--text-light); text-align: center; margin-top: 10px; }
+        .q-image { max-width: 100%; max-height: 300px; border-radius: 6px; margin: 10px 0; border: 1px solid var(--border); }
+
+        .dashboard-layout { display: flex; gap: 20px; align-items: flex-start; }
+        .dashboard-history { flex: 0 0 320px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 15px; height: calc(100vh - 150px); overflow-y: auto; }
+        .dashboard-main { flex: 1; }
+        .history-item { padding: 12px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; background: var(--surface); }
+        .history-item:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+
+        .qblock { display: none; }
+        .qblock.active { display: block; }
+        .exam-controls { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+        .nav-grid-container { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 15px; margin-top: 20px; }
+        .nav-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 8px; margin-top: 10px; }
+        .grid-btn { padding: 8px 0; text-align: center; border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-size: 0.9rem; font-weight: bold; transition: all 0.2s; background: var(--bg); color: var(--text-light); }
+        .grid-btn.answered { background: var(--primary); color: white; border-color: var(--primary); }
+        .grid-btn.flagged { background: var(--warning); color: white; border-color: var(--warning-dark); }
+        .grid-btn.active-q { box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.4); }
+
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: var(--surface); border: 1px solid var(--border); padding: 20px; border-radius: 8px; text-align: center; }
+        .stat-val { font-size: 2rem; font-weight: bold; color: var(--primary); }
+        .stat-label { font-size: 0.9rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 1px; margin-top: 5px; }
+
+        .home-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 20px; }
+        
+        .calendar-wrapper { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-weight: bold; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }
+        .calendar-day-label { font-size: 0.8rem; color: var(--text-light); font-weight: bold; margin-bottom: 5px; }
+        .calendar-day { padding: 8px 0; border-radius: 4px; font-size: 0.9rem; border: 1px solid transparent; cursor: pointer; transition: background 0.2s; }
+        .calendar-day:hover:not(.muted) { background: rgba(37, 99, 235, 0.2); }
+        .calendar-day.active { background: var(--primary); color: white; font-weight: bold; }
+        .calendar-day.has-activity { border-color: var(--primary); color: var(--primary); font-weight: bold; background: rgba(37, 99, 235, 0.1); }
+        .calendar-day.muted { color: var(--border); cursor: default; }
+
+        #date-activity-display { margin-top: 15px; padding: 15px; background: rgba(37, 99, 235, 0.05); border-radius: 8px; border: 1px dashed var(--primary); }
+
+        .prc-result { text-align: center; padding: 20px; border-radius: 8px; margin-bottom: 20px; font-weight: bold; font-size: 1.2rem; }
+        .prc-pass { background: var(--correct-bg); color: var(--correct); border: 1px solid var(--correct); }
+        .prc-fail { background: var(--wrong-bg); color: var(--wrong); border: 1px solid var(--wrong); }
+
+        .link-item { padding: 15px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; background: var(--surface); }
+        .link-item a { color: var(--primary); text-decoration: none; font-weight: bold; font-size: 1.1rem; }
+        .theme-toggle-container { display: flex; align-items: center; gap: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <h2>ECE Reviewer</h2>
+        
+        <h4>Overview</h4>
+        <button class="nav-btn active" onclick="switchView('view-home')">🏠 Home</button>
+        
+        <h4>Subjects</h4>
+        <button class="nav-btn" onclick="switchSubject('Math')">📐 Math</button>
+        <button class="nav-btn" onclick="switchSubject('GEAS')">🌍 GEAS</button>
+        <button class="nav-btn" onclick="switchSubject('ELECS')">⚡ ELECS</button>
+        <button class="nav-btn" onclick="switchSubject('ESAT')">📡 ESAT</button>
+        <button class="nav-btn" style="color: var(--warning-dark); background: rgba(234, 179, 8, 0.1);" onclick="startFullBoardSim()">🎓 PRC Board Sim</button>
+        
+        <div style="flex-grow: 1;"></div>
+        
+        <h4>Resources</h4>
+        <button class="nav-btn" onclick="switchView('view-links')">🔗 Important Links</button>
+        <button class="nav-btn" onclick="switchView('view-search')">🔍 Cheat Sheet</button>
+        <button class="nav-btn" onclick="switchView('view-analytics')">📈 Analytics</button>
+        <button class="nav-btn" onclick="switchView('view-settings')">⚙️ Settings</button>
+    </div>
+
+    <div class="main-content">
+        
+        <div id="view-home" class="view active">
+            <h1>
+                <span id="welcome-text">Welcome back!</span>
+                <div class="theme-toggle-container">
+                    <span style="font-size: 0.9rem; color: var(--text-light);">Dark Mode</span>
+                    <label style="position: relative; display: inline-block; width: 40px; height: 20px;">
+                        <input type="checkbox" id="home-theme-toggle" style="opacity: 0; width: 0; height: 0;" onchange="toggleDarkMode()">
+                        <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--border); border-radius: 20px; transition: .4s;">
+                            <span id="toggle-slider" style="position: absolute; content: ''; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; border-radius: 50%; transition: .4s;"></span>
+                        </span>
+                    </label>
+                </div>
+            </h1>
+            
+            <div class="stat-grid" id="home-stats"></div>
+
+            <div class="home-grid">
+                <div style="display: flex; flex-direction: column; gap: 20px;">
+                    <div class="card" style="margin-bottom: 0;">
+                        <h3 style="margin-top: 0; color: var(--primary);" id="monthly-title">Monthly Analytics</h3>
+                        <div class="flex-between" id="monthly-stats-container"></div>
+                    </div>
+                    <div class="card" style="flex: 1; margin-bottom: 0;">
+                        <h3 style="margin-top: 0;">Daily Questions Answered</h3>
+                        <div class="chart-container" style="height: 250px;"><canvas id="homeDailyChart"></canvas></div>
+                    </div>
+                </div>
+                
+                <div class="calendar-wrapper">
+                    <div class="calendar-header">
+                        <button class="icon-btn" onclick="changeMonth(-1)">◀</button>
+                        <span id="calendar-month-year"></span>
+                        <button class="icon-btn" onclick="changeMonth(1)">▶</button>
+                    </div>
+                    <div class="calendar-grid">
+                        <div class="calendar-day-label">Su</div><div class="calendar-day-label">Mo</div><div class="calendar-day-label">Tu</div><div class="calendar-day-label">We</div><div class="calendar-day-label">Th</div><div class="calendar-day-label">Fr</div><div class="calendar-day-label">Sa</div>
+                    </div>
+                    <div class="calendar-grid" id="calendar-days"></div>
+                    <div id="date-activity-display"><p style="margin:0; text-align:center; color:var(--text-light); font-size:0.9rem;">Click a date above to view your activity.</p></div>
+                </div>
+            </div>
+
+            <div id="recommendations-container" style="margin-bottom: 20px;"></div>
+
+            <div class="card">
+                <h3 style="margin-top: 0;">Recent Activity</h3>
+                <div id="recent-activity-feed" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px;"></div>
+            </div>
+        </div>
+
+        <div id="view-links" class="view">
+            <h1>Important Links</h1>
+            <div class="card" style="background: rgba(37, 99, 235, 0.05);">
+                <h3 style="margin-top: 0;">Add New Link</h3>
+                <div class="flex-gap">
+                    <input type="text" id="link-title" placeholder="Title (e.g., Smith Chart Calculator)" style="flex: 1; margin-bottom: 0;">
+                    <input type="url" id="link-url" placeholder="https://..." style="flex: 2; margin-bottom: 0;">
+                    <button onclick="saveLink()">Save Link</button>
+                </div>
+            </div>
+            <div id="links-container"></div>
+        </div>
+
+        <div id="view-dashboard" class="view">
+            <div class="flex-between">
+                <h1 id="subject-title">Subject</h1>
+                <div class="flex-gap">
+                    <button onclick="switchView('view-add')">+ Add Set</button>
+                </div>
+            </div>
+            <div class="dashboard-layout">
+                <div class="dashboard-history">
+                    <h3 style="margin-top: 0;">Subject History</h3>
+                    <div id="history-list"></div>
+                </div>
+                <div class="dashboard-main" id="sets-container"></div>
+            </div>
+        </div>
+
+        <div id="view-search" class="view">
+            <h1>Global Cheat Sheet</h1>
+            <input type="text" id="global-search-input" placeholder="Search for concepts, formulas, keywords, or tags..." onkeyup="executeSearch()">
+            <div id="search-results-container" style="margin-top: 20px;"></div>
+        </div>
+
+        <div id="view-add" class="view">
+            <h1>Add Set to <span id="add-label"></span></h1>
+            <label style="font-weight: bold; display: block; margin-bottom: 5px;">Section / Category</label>
+            <select id="set-section"></select>
+            <label style="font-weight: bold; display: block; margin-bottom: 5px;">Set Name</label>
+            <input type="text" id="set-name" placeholder="Set Name (e.g., Pre-Board A)">
+            <div class="card" style="background: rgba(37, 99, 235, 0.05);">
+                <p style="font-size:0.9rem; color:var(--text-light); margin-top:0;">
+                    <b>Format:</b> A. Option / <b>Ans:</b> A. <br>
+                    Use `#tags` to organize. Wrap math in `$$` or `$`.
+                </p>
+                <input type="file" id="image-upload" accept="image/*" style="display:none;" onchange="injectImageBase64(event)">
+                <button class="secondary" onclick="document.getElementById('image-upload').click()">+ Insert Base64 Image</button>
+            </div>
+            <textarea id="bulk-input"></textarea>
+            <div class="flex-gap">
+                <button onclick="parseAndSave()">Save Questions</button>
+                <button class="secondary" onclick="switchView('view-dashboard')">Cancel</button>
+            </div>
+        </div>
+
+        <div id="view-exam" class="view">
+            <div class="flex-between">
+                <div>
+                    <h1 id="exam-title" style="margin-bottom: 5px; border: none; padding: 0;">Exam</h1>
+                    <div id="exam-progress" style="font-size: 0.9rem; color: var(--text-light); margin-bottom: 15px;">Question 1 of N</div>
+                </div>
+                <button class="danger" onclick="abortExam()">Abort</button>
+            </div>
+            <div id="timer-display">00:00:00</div>
+            <div id="exam-container"></div>
+            <div class="exam-controls">
+                <button class="secondary" onclick="navQuestion(-1)" id="btn-prev-q">Previous</button>
+                <button class="warning" onclick="toggleFlag()" id="btn-flag-q">🚩 Flag for Review</button>
+                <button onclick="navQuestion(1)" id="btn-next-q">Next</button>
+                <button id="btn-submit-exam" style="display: none; background-color: var(--correct);" onclick="submitExam()">Submit Exam</button>
+            </div>
+            <p class="shortcut-hint">Right-click an option to cross it out. Keyboard: [A][B][C][D], [←][→]</p>
+            <div class="nav-grid-container">
+                <h4 style="margin-top: 0; margin-bottom: 5px;">Navigation Grid</h4>
+                <div id="nav-grid" class="nav-grid"></div>
+            </div>
+        </div>
+
+        <div id="view-review" class="view">
+            <h1 id="review-page-title">Results</h1>
+            <div id="prc-result-container" style="display: none;"></div>
+            <h2 style="text-align: center; font-size: 3rem; color: var(--primary); margin: 0;" id="review-score">0/0</h2>
+            <p style="text-align: center; margin-bottom: 5px;" id="review-percent">0%</p>
+            <p style="text-align: center; color: var(--text-light); margin-bottom: 20px;" id="review-time-stats"></p>
+            <button onclick="switchView('view-home')" style="display:block; margin: 0 auto 30px;">Return to Dashboard</button>
+            <div id="review-container"></div>
+        </div>
+
+        <div id="view-analytics" class="view">
+            <h1>Performance Analytics</h1>
+            <div id="analytics-empty" style="display:none; text-align:center; padding: 50px 20px; color: var(--text-light);">
+                <h2>Not enough data yet.</h2>
+                <p>Complete exams or mock boards to populate your analytics dashboard!</p>
+            </div>
+            <div id="analytics-content">
+                <div class="dashboard-layout" style="margin-bottom: 20px; gap: 20px;">
+                    <div class="card chart-container" style="flex: 1; min-width: 300px;"><h3 style="margin-top:0; text-align:center;">Subject Mastery</h3><canvas id="radarChart"></canvas></div>
+                    <div class="card chart-container" style="flex: 2;"><h3 style="margin-top:0;">Subject Scores Over Time</h3><canvas id="scoreChart"></canvas></div>
+                </div>
+                <div class="card chart-container"><h3 style="margin-top:0; color:var(--primary);">Full Board GWA Trend</h3><canvas id="gwaChart"></canvas></div>
+                <div class="card" id="tag-analysis"><h3>Weakest Topics (Spaced Repetition Targets)</h3><div id="weak-tags-container"></div></div>
+            </div>
+        </div>
+
+        <div id="view-settings" class="view">
+            <h1>Settings</h1>
+            <div class="card">
+                <h3>Profile</h3>
+                <label style="font-weight: bold; display: block; margin-bottom: 5px;">Your Name</label>
+                <div class="flex-gap">
+                    <input type="text" id="setting-name" style="margin-bottom: 0;">
+                    <button onclick="saveName()">Save Name</button>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Data Backup & Restore</h3>
+                <div class="flex-gap" style="margin-bottom: 15px;">
+                    <button onclick="exportData()">Export Data (.json)</button>
+                </div>
+                <div class="flex-gap">
+                    <input type="file" id="import-file" accept=".json" style="flex:1; margin-bottom: 0; padding: 6px;">
+                    <button class="secondary" onclick="importData()">Import Data</button>
+                </div>
+            </div>
+            <div class="card" style="border-color: var(--wrong);">
+                <h3 style="color: var(--wrong);">Danger Zone</h3>
+                <button class="danger" onclick="clearAllData()">Wipe All Data</button>
+            </div>
+        </div>
+
+    </div>
+
+<script>
+    const STORAGE_KEY = 'ece_ultimate_data';
+    const SUBJECT_SECTIONS = {
+        Math: ['Differential Calculus', 'Integral Calculus', 'Advance Engineering Mathematics for ECE', 'Engineering Data Analysis', 'Electromagnetic/Vector Analysis', 'Signals, Spectra & Signal Processing', 'Feedback and Control System', 'Uncategorized'],
+        GEAS: ['Chemistry for Engineers', 'Physics for Engineers', 'Engineering Economics', 'Engineering Management', 'Technopreneurship 101', 'Physics 2', 'Material Science and Engineering', 'Computer Programming', 'Environmental Science and Engineering', 'ECE Laws, Contracts, Ethics, Standards & Safety', 'Computer-Aided Drafting', 'Uncategorized'],
+        ELECS: ['DC Electrical Circuits', 'AC Electrical Circuits', 'Electromagnetics', 'Electronic Devices & Circuits', 'Electronic Circuit Analysis & Design', 'Logic Circuits & Switching Theory', 'Microprocessor & Microcontroller Systems & Design', 'Feedback and Control Systems', 'Uncategorized'],
+        ESAT: ['Signals, Spectra, Signal Processing', 'Principles of Communications', 'Digital Communications', 'Transmission & Antenna System', 'Electronics 3: Electronic System & Design', 'Data Communications', 'Uncategorized']
+    };
+
+    let db = {
+        Math: { sets: [], history: [], mistakes: [] },
+        GEAS: { sets: [], history: [], mistakes: [] },
+        ELECS: { sets: [], history: [], mistakes: [] },
+        ESAT: { sets: [], history: [], mistakes: [] },
+        fullBoardHistory: [], links: [], settings: { darkMode: false, userName: 'Anthony Mendoza' }
+    };
+
+    let currentSubject = 'Math';
+    let examState = { active: false, mode: '', section: '', questions: [], answers: {}, flags: {}, timerId: null, elapsedTime: 0, currentIndex: 0, timeLog: [], lastTick: 0, isFullBoard: false };
+    
+    let scoreChartInstance = null; let radarChartInstance = null; let gwaChartInstance = null; let homeDailyChartInstance = null;
+    let currentDate = new Date();
+
+    function loadData() {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+            let parsed = JSON.parse(saved);
+            if (!parsed.fullBoardHistory) parsed.fullBoardHistory = [];
+            if (!parsed.links) parsed.links = [];
+            if (!parsed.settings.userName) parsed.settings.userName = 'Anthony Mendoza';
+            db = parsed;
+        }
+        applyTheme(); document.getElementById('setting-name').value = db.settings.userName;
+        syncMistakes(); 
+    }
+    function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); }
+    
+    function syncMistakes() {
+        ['Math', 'GEAS', 'ELECS', 'ESAT'].forEach(subj => {
+            let mistakesMap = new Map();
+            db[subj].history.forEach(h => {
+                h.questions.forEach((q, i) => {
+                    q.section = h.section || q.section || 'Uncategorized';
+                    if (h.answers[i] !== q.answer) mistakesMap.set(q.text, q);
+                    else mistakesMap.delete(q.text); 
+                });
+            });
+            db[subj].mistakes = Array.from(mistakesMap.values());
+        });
+    }
+
+    function applyTheme() {
+        if (db.settings.darkMode) { document.body.classList.add('dark-mode'); document.getElementById('home-theme-toggle').checked = true; document.getElementById('toggle-slider').style.transform = 'translateX(20px)'; document.getElementById('toggle-slider').parentNode.style.backgroundColor = 'var(--primary)'; } 
+        else { document.body.classList.remove('dark-mode'); document.getElementById('home-theme-toggle').checked = false; document.getElementById('toggle-slider').style.transform = 'translateX(0)'; document.getElementById('toggle-slider').parentNode.style.backgroundColor = 'var(--border)'; }
+    }
+    function toggleDarkMode() { db.settings.darkMode = !db.settings.darkMode; saveData(); applyTheme(); if(document.getElementById('view-analytics').classList.contains('active')) setTimeout(renderAnalytics, 50); if(document.getElementById('view-home').classList.contains('active')) setTimeout(renderHomeCharts, 50); }
+    function saveName() { db.settings.userName = document.getElementById('setting-name').value.trim() || 'Anthony Mendoza'; saveData(); alert('Name saved successfully!'); document.getElementById('welcome-text').innerText = `Welcome back, ${db.settings.userName}!`; }
+
+    function switchSubject(subject) { currentSubject = subject; updateNavHighlight(subject); switchView('view-dashboard'); }
+    function updateNavHighlight(idText) { document.querySelectorAll('.nav-btn').forEach(b => { b.classList.remove('active'); if(b.innerText.includes(idText)) b.classList.add('active'); }); }
+    function switchView(viewId) {
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active')); document.getElementById(viewId).classList.add('active');
+        if(viewId === 'view-home') { updateNavHighlight('Home'); renderHome(); }
+        if(viewId === 'view-dashboard') renderDashboard();
+        if(viewId === 'view-add') { document.getElementById('add-label').innerText = currentSubject; populateSectionDropdown(); }
+        if(viewId === 'view-search') { document.getElementById('global-search-input').focus(); executeSearch(); }
+        if(viewId === 'view-links') renderLinks();
+        if(viewId === 'view-analytics') setTimeout(renderAnalytics, 50); 
+    }
+
+    function deleteHistory(subj, idx) {
+        if(!confirm("Are you sure you want to delete this history record? Analytics and mistake compilation will update.")) return;
+        if(subj === 'fullBoard') db.fullBoardHistory.splice(idx, 1);
+        else db[subj].history.splice(idx, 1);
+        syncMistakes(); saveData();
+        if(document.getElementById('view-home').classList.contains('active')) renderHome(); else renderDashboard();
+    }
+    
+    function deleteSet(idx) {
+        if(confirm("Delete this entire set of questions?")) { db[currentSubject].sets.splice(idx, 1); saveData(); renderDashboard(); }
+    }
+
+    function renderHome() {
+        document.getElementById('welcome-text').innerText = `Welcome back, ${db.settings.userName}!`;
+
+        let totalExams = 0, totalAnswered = 0; let sums = { pct: 0 };
+        let allHistory = [];
+        
+        ['Math', 'GEAS', 'ELECS', 'ESAT'].forEach(s => {
+            db[s].history.forEach(h => { totalExams++; sums.pct += h.pct; totalAnswered += h.total; allHistory.push({...h, subj: s}); });
+        });
+        db.fullBoardHistory.forEach(h => { totalExams++; sums.pct += h.pct; totalAnswered += h.total; allHistory.push({...h, subj: 'PRC Sim'}); });
+
+        let avgPct = totalExams > 0 ? Math.round(sums.pct / totalExams) : 0;
+        document.getElementById('home-stats').innerHTML = `<div class="stat-card"><div class="stat-val">${totalAnswered}</div><div class="stat-label">Questions Answered</div></div><div class="stat-card"><div class="stat-val">${totalExams}</div><div class="stat-label">Exams Taken</div></div><div class="stat-card"><div class="stat-val">${avgPct}%</div><div class="stat-label">Overall Accuracy</div></div>`;
+
+        let recommendations = [];
+        ['Math', 'GEAS', 'ELECS', 'ESAT'].forEach(subj => {
+            let setsBySec = {};
+            db[subj].sets.forEach(set => { setsBySec[set.section || 'Uncategorized'] = true; });
+            Object.keys(setsBySec).forEach(sec => {
+                let secHist = db[subj].history.filter(h => h.section === sec);
+                if(secHist.length > 0) {
+                    let avg = secHist.reduce((a,c) => a + c.pct, 0) / secHist.length;
+                    if(avg < 60) recommendations.push({ subj, sec, avg });
+                }
+            });
+        });
+
+        let recHtml = `<div class="card" style="border-left: 4px solid var(--warning);"><h3 style="margin-top:0;">📚 Needs Improvement (< 60%)</h3>`;
+        if(recommendations.length > 0) {
+            recHtml += `<ul style="margin:0; padding-left:20px; color:var(--text-light); line-height: 1.6;">`;
+            recommendations.forEach(r => { recHtml += `<li><b>${r.subj}</b> - ${r.sec} <span style="color:var(--wrong); font-weight:bold;">(${r.avg.toFixed(1)}%)</span></li>`; });
+            recHtml += `</ul></div>`;
+        } else {
+            recHtml += `<p style="color:var(--correct); font-weight:bold; margin:0;">Great job! All your attempted sections are at or above 60% accuracy.</p></div>`;
+        }
+        document.getElementById('recommendations-container').innerHTML = recHtml;
+
+        const feed = document.getElementById('recent-activity-feed'); feed.innerHTML = '';
+        allHistory.sort((a, b) => new Date(b.date) - new Date(a.date));
+        if(allHistory.length === 0) feed.innerHTML = '<p style="color:var(--text-light);">No activity yet.</p>';
+        allHistory.slice(0, 12).forEach((h) => {
+            let color = h.pct >= 70 ? 'var(--correct)' : 'var(--wrong)';
+            feed.innerHTML += `<div class="history-item flex-between" onclick="openPastReviewFromFeed('${h.subj}', '${h.date}', '${h.mode}')"><div><div class="history-title">${h.subj}: ${h.mode}</div><div class="history-meta"><span>${h.date}</span></div></div><div style="color:${color}; font-weight:bold; font-size:1.2rem;">${h.pct.toFixed(1)}%</div></div>`;
+        });
+
+        renderCalendar(); setTimeout(renderHomeCharts, 50);
+    }
+
+    function openPastReviewFromFeed(subj, date, mode) {
+        let list = subj === 'PRC Sim' ? db.fullBoardHistory : db[subj].history;
+        let idx = list.findIndex(h => h.date === date && h.mode === mode);
+        if(idx !== -1) openPastReview(subj === 'PRC Sim' ? 'fullBoard' : subj, idx);
+    }
+
+    function renderMonthlyAnalytics() {
+        const year = currentDate.getFullYear(), month = currentDate.getMonth();
+        document.getElementById('monthly-title').innerText = `${new Intl.DateTimeFormat('en-US', { month: 'long' }).format(currentDate)} Analytics`;
+        let mExams = 0, mScoreSum = 0;
+        ['Math', 'GEAS', 'ELECS', 'ESAT'].forEach(s => { db[s].history.forEach(h => { let d = new Date(h.date); if(d.getMonth()===month && d.getFullYear()===year) { mExams++; mScoreSum += h.pct; } }); });
+        db.fullBoardHistory.forEach(h => { let d = new Date(h.date); if(d.getMonth()===month && d.getFullYear()===year) { mExams++; mScoreSum += h.pct; } });
+        let mAvg = mExams > 0 ? Math.round(mScoreSum / mExams) : 0;
+        document.getElementById('monthly-stats-container').innerHTML = `<div style="text-align:center;"><div style="font-size:1.5rem; font-weight:bold; color:var(--primary);">${mExams}</div><div style="font-size:0.8rem; color:var(--text-light);">Exams Taken</div></div><div style="text-align:center;"><div style="font-size:1.5rem; font-weight:bold; color:var(--primary);">${mAvg}%</div><div style="font-size:0.8rem; color:var(--text-light);">Avg Score</div></div>`;
+    }
+
+    function renderHomeCharts() {
+        let dailyTotals = {};
+        ['Math', 'GEAS', 'ELECS', 'ESAT'].forEach(s => db[s].history.forEach(h => { dailyTotals[h.date] = (dailyTotals[h.date] || 0) + h.total; }) );
+        db.fullBoardHistory.forEach(h => { dailyTotals[h.date] = (dailyTotals[h.date] || 0) + h.total; });
+        let sortedDates = Object.keys(dailyTotals).sort((a,b) => new Date(a) - new Date(b)).slice(-14); 
+        let chartData = sortedDates.map(d => dailyTotals[d]);
+        Chart.defaults.color = db.settings.darkMode ? '#94a3b8' : '#64748b';
+        if(homeDailyChartInstance) homeDailyChartInstance.destroy();
+        let ctx = document.getElementById('homeDailyChart');
+        if(ctx) { homeDailyChartInstance = new Chart(ctx.getContext('2d'), { type: 'bar', data: { labels: sortedDates, datasets: [{ label: 'Questions Answered', data: chartData, backgroundColor: 'rgba(37, 99, 235, 0.8)', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false } } } }); }
+    }
+
+    function renderCalendar() {
+        const monthYear = document.getElementById('calendar-month-year'); const daysContainer = document.getElementById('calendar-days'); daysContainer.innerHTML = '';
+        const year = currentDate.getFullYear(), month = currentDate.getMonth();
+        monthYear.innerText = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(currentDate);
+
+        let activeDates = new Set();
+        ['Math', 'GEAS', 'ELECS', 'ESAT'].forEach(s => db[s].history.forEach(h => activeDates.add(h.date)));
+        db.fullBoardHistory.forEach(h => activeDates.add(h.date));
+        
+        const firstDay = new Date(year, month, 1).getDay(); const daysInMonth = new Date(year, month + 1, 0).getDate();
+        for (let i = 0; i < firstDay; i++) daysContainer.innerHTML += `<div class="calendar-day muted"></div>`;
+        const todayStr = new Date().toLocaleDateString();
+        for (let i = 1; i <= daysInMonth; i++) {
+            let dStr = new Date(year, month, i).toLocaleDateString(); let classes = ['calendar-day'];
+            if(dStr === todayStr) classes.push('active'); else if(activeDates.has(dStr)) classes.push('has-activity');
+            daysContainer.innerHTML += `<div class="${classes.join(' ')}" onclick="showDateActivity('${dStr}')">${i}</div>`;
+        }
+        renderMonthlyAnalytics();
+    }
+    function changeMonth(dir) { currentDate.setMonth(currentDate.getMonth() + dir); renderCalendar(); }
+    
+    function showDateActivity(dStr) {
+        const display = document.getElementById('date-activity-display');
+        display.innerHTML = `<h4 style="margin-top:0; color:var(--primary);">${dStr} Activity</h4>`;
+        let acts = [];
+        ['Math', 'GEAS', 'ELECS', 'ESAT'].forEach(s => { db[s].history.forEach(h => { if(h.date === dStr) acts.push({...h, subj: s}); }); });
+        db.fullBoardHistory.forEach(h => { if(h.date === dStr) acts.push({...h, subj: 'PRC Sim'}); });
+        
+        if(acts.length === 0) { display.innerHTML += '<p style="margin:0; font-size:0.9rem;">No exams taken on this date.</p>'; return; }
+        acts.forEach(h => {
+            let c = h.pct >= 70 ? 'var(--correct)' : 'var(--wrong)';
+            display.innerHTML += `<div style="border-bottom: 1px solid var(--border); padding: 6px 0; font-size:0.9rem; display:flex; justify-content:space-between;"><span><b>${h.subj}</b> - ${h.mode}</span> <span style="color:${c}; font-weight:bold;">${h.pct.toFixed(1)}%</span></div>`;
+        });
+    }
+
+    function renderLinks() {
+        const container = document.getElementById('links-container'); container.innerHTML = '';
+        if(db.links.length === 0) container.innerHTML = '<p style="color:var(--text-light);">No links saved yet.</p>';
+        db.links.forEach((link, idx) => { container.innerHTML += `<div class="link-item"><a href="${link.url}" target="_blank">🔗 ${link.title}</a><button class="danger" style="padding: 5px 10px; font-size: 0.8rem;" onclick="deleteLink(${idx})">Delete</button></div>`; });
+    }
+    function saveLink() {
+        const title = document.getElementById('link-title').value.trim(); let url = document.getElementById('link-url').value.trim();
+        if(!title || !url) return alert("Fill both title and URL."); if(!url.startsWith('http')) url = 'https://' + url;
+        db.links.push({title, url}); saveData(); document.getElementById('link-title').value = ''; document.getElementById('link-url').value = ''; renderLinks();
+    }
+    function deleteLink(idx) { db.links.splice(idx, 1); saveData(); renderLinks(); }
+
+    function renderDashboard() {
+        let hList = db[currentSubject].history;
+        let acc = hList.length ? (hList.reduce((a,c)=>a+c.pct,0)/hList.length).toFixed(1) : 0;
+        document.getElementById('subject-title').innerHTML = `${currentSubject} <span style="font-size: 1.2rem; color: var(--text-light); font-weight: normal;">(Accuracy: ${acc}%)</span>`;
+        
+        const histList = document.getElementById('history-list'); histList.innerHTML = '';
+        let reversedHistory = [...db[currentSubject].history].reverse();
+        if (reversedHistory.length === 0) histList.innerHTML = '<p style="color:var(--text-light);font-size:0.9rem;">No past exams yet.</p>';
+        else {
+            reversedHistory.forEach((rec) => {
+                let originalIndex = db[currentSubject].history.indexOf(rec);
+                let color = rec.pct >= 70 ? 'var(--correct)' : 'var(--wrong)';
+                histList.innerHTML += `
+                    <div class="history-item flex-between" onclick="openPastReview('${currentSubject}', ${originalIndex})">
+                        <div><div class="history-title">${rec.mode}</div><div class="history-meta"><span>${rec.date}</span><span style="color:${color}; font-weight:bold; margin-left:10px;">${rec.pct}%</span></div></div>
+                        <button class="icon-btn" style="color: var(--wrong);" onclick="event.stopPropagation(); deleteHistory('${currentSubject}', ${originalIndex})" title="Delete Record">✖</button>
+                    </div>`;
+            });
+        }
+        
+        const container = document.getElementById('sets-container'); container.innerHTML = '';
+        
+        let setsBySection = {};
+        db[currentSubject].sets.forEach((set, idx) => {
+            let sec = set.section || 'Uncategorized'; if(!setsBySection[sec]) setsBySection[sec] = []; setsBySection[sec].push({set, idx});
+        });
+        
+        if(Object.keys(setsBySection).length === 0) container.innerHTML += `<p style="color: var(--text-light)">No sets added yet.</p>`;
+        
+        for (const [section, items] of Object.entries(setsBySection)) {
+            let secHist = db[currentSubject].history.filter(h => h.section === section);
+            let secAcc = secHist.length ? (secHist.reduce((a,c)=>a+c.pct,0)/secHist.length).toFixed(1) : 'N/A';
+            
+            let secMistakes = db[currentSubject].mistakes.filter(q => (q.section || 'Uncategorized') === section);
+            let mistakesHtml = secMistakes.length > 0 ? `<button class="danger" style="font-size:0.8rem; padding: 5px 10px;" onclick="printMistakes('${currentSubject}', '${section}')">📥 Download Mistakes PDF (${secMistakes.length})</button>` : '';
+
+            container.innerHTML += `<h3 class="section-header">${section} <span style="font-size:1rem; color:var(--text-light); font-weight:normal;">(Rating: ${secAcc}${secAcc!=='N/A'?'%':''})</span> ${mistakesHtml}</h3>`;
+            
+            items.forEach(item => {
+                container.innerHTML += `
+                    <div class="card flex-between">
+                        <div><h3 style="margin:0 0 5px 0">${item.set.name}</h3><span style="font-size:0.9rem; color:var(--text-light)">${item.set.questions.length} Items</span></div>
+                        <div class="flex-gap">
+                            <button onclick="startStandardExam(${item.idx})">Take Mode</button>
+                            <button class="warning" onclick="printSet('${currentSubject}', ${item.idx})">🖨️ PDF Mock</button>
+                            <button class="danger" onclick="deleteSet(${item.idx})">🗑️ Delete</button>
+                        </div>
+                    </div>`;
+            });
+        }
+    }
+
+    function printMistakes(subj, section) {
+        let pool = db[subj].mistakes.filter(q => (q.section || 'Uncategorized') === section);
+        if(pool.length === 0) return alert("No mistakes in this section!");
+        
+        let printWin = window.open('', '_blank');
+        let html = `<html><head><title>${subj} - ${section} Mistakes</title><style>body{font-family:Arial,sans-serif;padding:20px;line-height:1.6;} h1,h2{text-align:center;} .q-container{margin-bottom:30px; border-bottom: 1px solid #ccc; padding-bottom: 15px;} .correct-ans{color: #16a34a; font-weight: bold; background: #dcfce7; padding: 5px 10px; display: inline-block; border-radius: 4px; margin-top: 10px;} .q-image{max-width:400px; display:block; margin: 10px 0;} @media print { .page-break { page-break-before: always; } }</style><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css"></head><body>`;
+        html += `<h1>${subj} Mistakes Compilation</h1><h2>Category: ${section}</h2><p style="text-align:center; color: #666;">Focus on these ${pool.length} items to improve your rating.</p><hr>`;
+        
+        pool.forEach((q, i) => {
+            let imgHTML = q.image ? `<img src="${q.image}" class="q-image">` : '';
+            let correctOpt = q.options.find(o => o.letter === q.answer);
+            let correctText = correctOpt ? correctOpt.text : 'Unknown';
+            html += `<div class="q-container"><strong>${i+1}. ${q.text}</strong>${imgHTML}<div><span class="correct-ans">Correct Answer: ${q.answer}. ${correctText}</span></div></div>`;
+        });
+        html += `<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"><\/script><script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body); setTimeout(()=>window.print(), 1000);"><\/script></body></html>`;
+        printWin.document.write(html); printWin.document.close();
+    }
+
+    function printSet(subj, setIdx) {
+        const set = db[subj].sets[setIdx];
+        let printWin = window.open('', '_blank');
+        let html = `<html><head><title>${subj} - ${set.name} Mock Exam</title><style>body { font-family: Arial, sans-serif; padding: 20px; line-height: 1.5; } h1, h2 { text-align: center; } .q-container { margin-bottom: 20px; page-break-inside: avoid; } .options { margin-left: 20px; } .q-image { max-width: 400px; max-height: 300px; display: block; margin: 10px 0; } @media print { .page-break { page-break-before: always; } }</style><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css"></head><body><h1>${subj} MOCK EXAM</h1><h2>${set.name} (${set.section || 'Uncategorized'})</h2><hr>`;
+        set.questions.forEach((q, i) => { let imgHTML = q.image ? `<img src="${q.image}" class="q-image">` : ''; html += `<div class="q-container"><strong>${i+1}. ${q.text}</strong>${imgHTML}<div class="options">`; q.options.forEach(opt => { html += `<div>${opt.letter}. ${opt.text}</div>`; }); html += `</div></div>`; });
+        html += `<div class="page-break"></div><h2>Answer Key</h2><div style="column-count: 4;">`; set.questions.forEach((q, i) => { html += `<div><strong>${i+1}.</strong> ${q.answer}</div>`; }); html += `</div><script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"><\/script><script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body); setTimeout(()=>window.print(), 1000);"><\/script></body></html>`;
+        printWin.document.write(html); printWin.document.close();
+    }
+
+    function populateSectionDropdown() { const select = document.getElementById('set-section'); select.innerHTML = ''; SUBJECT_SECTIONS[currentSubject].forEach(sec => select.innerHTML += `<option value="${sec}">${sec}</option>`); }
+    function injectImageBase64(event) { const file = event.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = e => { const ta = document.getElementById('bulk-input'); const pos = ta.selectionStart; ta.value = ta.value.substring(0, pos) + `\n[IMG: ${e.target.result}]\n` + ta.value.substring(pos); }; reader.readAsDataURL(file); }
+
+    function parseAndSave() {
+        const name = document.getElementById('set-name').value.trim(); const section = document.getElementById('set-section').value; const text = document.getElementById('bulk-input').value;
+        if (!name || !text) return alert("Fill all fields.");
+        const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0); let questions = [], currentQ = null;
+        for (let line of lines) {
+            const ansMatch = line.match(/^(?:Answer|Ans):\s*([A-D])/i);
+            if (ansMatch && currentQ && currentQ.options.length > 0) { currentQ.answer = ansMatch[1].toUpperCase(); questions.push(currentQ); currentQ = null; continue; }
+            const optMatch = line.match(/^([A-D])[\.\)]\s*(.+)/i);
+            if (optMatch) { if (!currentQ) currentQ = { text: "Missing Q", options: [], tags: [] }; currentQ.options.push({ letter: optMatch[1].toUpperCase(), text: optMatch[2] }); continue; }
+            const imgMatch = line.match(/^\[IMG:\s*(data:image\/[^\]]+)\]/i);
+            if (imgMatch) { if (!currentQ) currentQ = { text: "", options: [], tags: [] }; currentQ.image = imgMatch[1]; continue; }
+            if (!currentQ) { currentQ = { text: line.replace(/#\w+/g, '').trim(), options: [], tags: (line.match(/#\w+/g) || []).map(t => t.substring(1)), subject: currentSubject, section: section }; } 
+            else if (currentQ.options.length === 0) { currentQ.text += " " + line.replace(/#\w+/g, '').trim(); currentQ.tags.push(...(line.match(/#\w+/g) || []).map(t => t.substring(1))); }
+        }
+        if(questions.length === 0) return alert("No valid questions found.");
+        questions.forEach(q => q.section = section);
+        db[currentSubject].sets.push({ name, section, questions }); saveData(); document.getElementById('set-name').value = ''; document.getElementById('bulk-input').value = ''; switchView('view-dashboard');
+    }
+
+    function shuffleArray(array) { let arr = [...array]; for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; }
+    function getScrambledQuestions(originalQuestions) {
+        let qs = JSON.parse(JSON.stringify(originalQuestions)); qs = shuffleArray(qs);
+        qs.forEach(q => { let correctText = q.options.find(o => o.letter === q.answer)?.text || ""; q.options = shuffleArray(q.options); q.options.forEach((opt, idx) => { opt.letter = ['A', 'B', 'C', 'D'][idx]; if (opt.text === correctText) q.answer = opt.letter; }); });
+        return qs;
+    }
+
+    function startFullBoardSim() {
+        let fullQs = [];
+        for(let subj of ['Math', 'GEAS', 'ELECS', 'ESAT']) {
+            let allQ = []; db[subj].sets.forEach(s => allQ.push(...s.questions));
+            if(allQ.length < 10) return alert(`Not enough questions in ${subj} to simulate. Need at least 10.`);
+            fullQs.push(...allQ.map(q => ({...q, sourceSubject: subj})).sort(() => 0.5 - Math.random()).slice(0, 100));
+        }
+        setupExamEngine("Full ECE Board Simulation (PRC Logic)", "Full Board Simulation", "Simulation", fullQs);
+        examState.isFullBoard = true;
+    }
+
+    function setupExamEngine(title, mode, section, originalQuestionsList) {
+        if(originalQuestionsList.length === 0) return alert("No questions available.");
+        let scrambledList = getScrambledQuestions(originalQuestionsList);
+
+        examState = { active: true, mode: mode, section: section, questions: scrambledList, answers: {}, flags: {}, timerId: null, elapsedTime: 0, currentIndex: 0, timeLog: new Array(scrambledList.length).fill(0), lastTick: Math.floor(Date.now() / 1000), isFullBoard: mode === "Full Board Simulation", subjectStr: currentSubject };
+        
+        document.getElementById('exam-title').innerText = title; const container = document.getElementById('exam-container'); container.innerHTML = '';
+        scrambledList.forEach((q, i) => {
+            const block = document.createElement('div'); block.className = `qblock ${i === 0 ? 'active' : ''}`; block.id = `qblock-${i}`;
+            let tagHTML = q.tags.map(t => `<span class="tag">#${t}</span>`).join(''); if(examState.isFullBoard) tagHTML += `<span class="tag" style="background:#000;color:#fff;">${q.sourceSubject}</span>`;
+            block.innerHTML = `<div class="card"><div style="margin-bottom:15px; font-weight:600; font-size: 1.1rem;">Q${i+1}. ${q.text}</div>${q.image ? `<img src="${q.image}" class="q-image">` : ''}<div style="margin-bottom:10px;">${tagHTML}</div><div id="opts-${i}"></div></div>`;
+            container.appendChild(block);
+
+            const optContainer = document.getElementById(`opts-${i}`);
+            q.options.forEach(opt => {
+                const label = document.createElement('label'); label.className = 'option-label';
+                label.innerHTML = `<input type="radio" name="q_${i}" value="${opt.letter}" style="display:none;"><b>${opt.letter}.</b> ${opt.text}`;
+                label.onclick = (e) => { 
+                    if(e.target.tagName === 'INPUT') return; 
+                    if(e.type === 'contextmenu') { e.preventDefault(); label.classList.toggle('strike'); return false; } 
+                    if(!label.classList.contains('strike')) selectOption(i, opt.letter, label, optContainer); 
+                };
+                label.oncontextmenu = label.onclick; optContainer.appendChild(label);
+            });
+        });
+
+        renderMathInElement(container, { delimiters: [ {left: "$$", right: "$$", display: true}, {left: "$", right: "$", display: false} ] });
+        buildNavGrid(); updatePaginationUI();
+        
+        startElapsedTimer();
+        switchView('view-exam');
+    }
+
+    function startElapsedTimer() {
+        examState.elapsedTime = 0;
+        document.getElementById('timer-display').style.display = 'block';
+        updateTimerDisplay();
+        
+        examState.timerId = setInterval(() => {
+            examState.elapsedTime++;
+            updateTimerDisplay();
+            
+            let now = Math.floor(Date.now() / 1000);
+            if(now > examState.lastTick) {
+                examState.timeLog[examState.currentIndex] += (now - examState.lastTick);
+                examState.lastTick = now;
+            }
+        }, 1000);
+    }
+
+    function updateTimerDisplay() {
+        const h = Math.floor(examState.elapsedTime / 3600).toString().padStart(2, '0');
+        const m = Math.floor((examState.elapsedTime % 3600) / 60).toString().padStart(2, '0');
+        const s = (examState.elapsedTime % 60).toString().padStart(2, '0');
+        document.getElementById('timer-display').innerText = `${h}:${m}:${s}`;
+    }
+
+    function buildNavGrid() { const grid = document.getElementById('nav-grid'); grid.innerHTML = ''; for(let i=0; i<examState.questions.length; i++) { const btn = document.createElement('div'); btn.className = 'grid-btn'; btn.id = `grid-btn-${i}`; btn.innerText = i + 1; btn.onclick = () => jumpToQuestion(i); grid.appendChild(btn); } updateGridColors(); }
+    function updateGridColors() {
+        if(!examState.active) return;
+        for(let i=0; i<examState.questions.length; i++) { const btn = document.getElementById(`grid-btn-${i}`); if(!btn) continue; btn.className = 'grid-btn'; if(examState.flags[i]) btn.classList.add('flagged'); else if(examState.answers[i]) btn.classList.add('answered'); if(i === examState.currentIndex) btn.classList.add('active-q'); }
+    }
+    function toggleFlag() { examState.flags[examState.currentIndex] = !examState.flags[examState.currentIndex]; document.getElementById('btn-flag-q').innerText = examState.flags[examState.currentIndex] ? '🚩 Unflag' : '🚩 Flag'; updateGridColors(); }
+    function jumpToQuestion(idx) { document.getElementById(`qblock-${examState.currentIndex}`).classList.remove('active'); examState.currentIndex = idx; document.getElementById(`qblock-${examState.currentIndex}`).classList.add('active'); updatePaginationUI(); updateGridColors(); }
+    function selectOption(qIdx, letter, labelElement, container) {
+        if(!examState.active) return; examState.answers[qIdx] = letter; container.querySelectorAll('.option-label').forEach(l => l.classList.remove('selected')); labelElement.classList.add('selected'); updateGridColors();
+        setTimeout(() => { 
+            if(examState.currentIndex === qIdx && examState.currentIndex < examState.questions.length - 1) jumpToQuestion(examState.currentIndex + 1); 
+        }, 300);
+    }
+    function navQuestion(dir) { let nIdx = examState.currentIndex + dir; if(nIdx >= 0 && nIdx < examState.questions.length) jumpToQuestion(nIdx); }
+    function updatePaginationUI() {
+        document.getElementById('exam-progress').innerText = `Question ${examState.currentIndex + 1} of ${examState.questions.length}`;
+        document.getElementById('btn-prev-q').style.visibility = examState.currentIndex === 0 ? 'hidden' : 'visible';
+        document.getElementById('btn-flag-q').innerText = examState.flags[examState.currentIndex] ? '🚩 Unflag' : '🚩 Flag';
+        let isLast = examState.currentIndex === examState.questions.length - 1; document.getElementById('btn-next-q').style.display = isLast ? 'none' : 'inline-block'; document.getElementById('btn-submit-exam').style.display = 'inline-block'; 
+    }
+    function startStandardExam(setIdx) { const set = db[currentSubject].sets[setIdx]; setupExamEngine(`${currentSubject} - ${set.name}`, set.name, set.section, [...set.questions]); }
+    
+    function submitExam() {
+        clearInterval(examState.timerId); examState.active = false;
+        let totalTime = examState.timeLog.reduce((a,b)=>a+b, 0);
+        let avgTime = examState.questions.length > 0 ? Math.round(totalTime / examState.questions.length) : 0;
+        
+        let score = 0;
+        examState.questions.forEach((q, i) => { if (examState.answers[i] === q.answer) score++; });
+
+        let record = { date: new Date().toLocaleDateString(), mode: examState.mode, section: examState.section, total: examState.questions.length, avgTime: avgTime, questions: examState.questions, answers: examState.answers, isFullBoard: examState.isFullBoard };
+
+        if(examState.isFullBoard) {
+            let scores = { Math: {s:0, t:0}, GEAS: {s:0, t:0}, ELECS: {s:0, t:0}, ESAT: {s:0, t:0} };
+            examState.questions.forEach((q, i) => { let isCorrect = examState.answers[i] === q.answer; let subj = q.sourceSubject; scores[subj].t++; if(isCorrect) scores[subj].s++; });
+            let pMath = scores.Math.t ? (scores.Math.s / scores.Math.t)*100 : 0, pGEAS = scores.GEAS.t ? (scores.GEAS.s / scores.GEAS.t)*100 : 0, pELECS = scores.ELECS.t ? (scores.ELECS.s / scores.ELECS.t)*100 : 0, pESAT = scores.ESAT.t ? (scores.ESAT.s / scores.ESAT.t)*100 : 0;
+            record.score = Object.values(scores).reduce((sum, s)=>sum+s.s, 0); record.pct = (pMath + pGEAS + pELECS + pESAT) / 4; record.subjectScores = { Math: pMath, GEAS: pGEAS, ELECS: pELECS, ESAT: pESAT };
+            db.fullBoardHistory.push(record);
+        } else {
+            record.score = score; record.pct = Math.round((score/record.total)*100); 
+            
+            let existingIdx = db[examState.subjectStr].history.findIndex(h => h.mode === examState.mode);
+            if (existingIdx !== -1) db[examState.subjectStr].history.splice(existingIdx, 1);
+            db[examState.subjectStr].history.push(record);
+        }
+        
+        syncMistakes(); 
+        saveData(); 
+        
+        alert(`Exam Submitted!\nYour Score: ${record.pct.toFixed(1)}%\nYou can view the detailed results in the History panel.`);
+        
+        if (examState.isFullBoard) {
+            switchView('view-home');
+        } else {
+            renderDashboard(); 
+            switchView('view-dashboard');
+        }
+    }
+    
+    function abortExam() { if(confirm("Abort? Data will be lost.")) { clearInterval(examState.timerId); examState.active=false; switchView('view-dashboard'); } }
+
+    function openPastReview(subj, histIdx) { const record = subj === 'fullBoard' ? db.fullBoardHistory[histIdx] : db[subj].history[histIdx]; renderReviewScreen(record, true); }
+    function renderReviewScreen(record, isPast = false) {
+        document.getElementById('review-page-title').innerText = isPast ? `Past Review: ${record.mode} (${record.date})` : 'Results';
+        document.getElementById('review-score').innerText = `${record.score} / ${record.total}`; document.getElementById('review-percent').innerText = `${record.pct.toFixed(1)}%`; document.getElementById('review-time-stats').innerText = `Avg Time per Question: ${record.avgTime || 0}s`;
+        
+        const prcBox = document.getElementById('prc-result-container');
+        if(record.isFullBoard && record.subjectScores) {
+            let pass = (record.pct >= 70) && (record.subjectScores.Math >= 60 && record.subjectScores.GEAS >= 60 && record.subjectScores.ELECS >= 60 && record.subjectScores.ESAT >= 60);
+            prcBox.style.display = 'block'; prcBox.className = `prc-result ${pass ? 'prc-pass' : 'prc-fail'}`;
+            prcBox.innerHTML = `<div>GWA: ${record.pct.toFixed(2)}% - <b>${pass ? 'PASSED' : 'FAILED'}</b></div><div style="font-size: 0.9rem; margin-top: 10px; font-weight: normal;">Math: ${record.subjectScores.Math.toFixed(1)}% | GEAS: ${record.subjectScores.GEAS.toFixed(1)}% | ELECS: ${record.subjectScores.ELECS.toFixed(1)}% | ESAT: ${record.subjectScores.ESAT.toFixed(1)}%</div>${!pass && record.pct >= 70 ? '<div style="margin-top: 5px; color:var(--wrong);">Failed due to subject score below 60%.</div>' : ''}`;
+        } else prcBox.style.display = 'none';
+
+        const revContainer = document.getElementById('review-container'); revContainer.innerHTML = '';
+        record.questions.forEach((q, i) => {
+            const isCorrect = record.answers[i] === q.answer;
+            const block = document.createElement('div'); block.className = 'card'; block.style.borderLeft = isCorrect ? "5px solid var(--correct)" : "5px solid var(--wrong)";
+            block.innerHTML = `<div class="flex-between"><div style="font-weight:bold; margin-bottom:10px">Q${i+1}. ${q.text}</div></div>${q.image ? `<img src="${q.image}" class="q-image"><br>` : ''}`;
+            q.options.forEach(opt => {
+                let colorClass = opt.letter === q.answer ? 'correct' : (opt.letter === record.answers[i] ? 'wrong' : '');
+                block.innerHTML += `<div class="option-label ${colorClass}"><b>${opt.letter}.</b> ${opt.text}</div>`;
+            });
+            revContainer.appendChild(block);
+        });
+        renderMathInElement(revContainer, { delimiters: [ {left: "$$", right: "$$", display: true}, {left: "$", right: "$", display: false} ] }); switchView('view-review');
+    }
+
+    function renderAnalytics() {
+        let totalRecords = 0; ['Math', 'GEAS', 'ELECS', 'ESAT'].forEach(s => totalRecords += db[s].history.length);
+        if (totalRecords === 0) { document.getElementById('analytics-empty').style.display = 'block'; document.getElementById('analytics-content').style.display = 'none'; return; }
+        document.getElementById('analytics-empty').style.display = 'none'; document.getElementById('analytics-content').style.display = 'block';
+
+        Chart.defaults.color = db.settings.darkMode ? '#94a3b8' : '#64748b'; const colors = { Math: '#ef4444', GEAS: '#f59e0b', ELECS: '#3b82f6', ESAT: '#10b981', Overall: '#8b5cf6' };
+
+        let radarData = [];
+        ['Math', 'GEAS', 'ELECS', 'ESAT'].forEach(subj => {
+            let hist = db[subj].history; if(hist.length === 0) { radarData.push(0); return; }
+            radarData.push(Math.round(hist.reduce((acc, h) => acc + h.pct, 0) / hist.length));
+        });
+        if(radarChartInstance) radarChartInstance.destroy();
+        radarChartInstance = new Chart(document.getElementById('radarChart').getContext('2d'), { type: 'radar', data: { labels: ['Math', 'GEAS', 'ELECS', 'ESAT'], datasets: [{ label: 'Avg Subject Score %', data: radarData, backgroundColor: 'rgba(37, 99, 235, 0.2)', borderColor: 'rgba(37, 99, 235, 1)' }] }, options: { responsive: true, maintainAspectRatio: false, scales: { r: { min: 0, max: 100 } } } });
+
+        const labels = []; ['Math', 'GEAS', 'ELECS', 'ESAT'].forEach(subj => { db[subj].history.forEach(h => { if(!labels.includes(h.date)) labels.push(h.date); }); }); labels.sort();
+        const datasets = []; ['Math', 'GEAS', 'ELECS', 'ESAT'].forEach(subj => {
+            datasets.push({ label: subj, data: labels.map(date => { const dayRecs = db[subj].history.filter(h => h.date === date); return dayRecs.length ? dayRecs.reduce((a,c)=>a+c.pct,0)/dayRecs.length : null; }), borderColor: colors[subj], backgroundColor: colors[subj], tension: 0.3, spanGaps: true });
+        });
+        if(scoreChartInstance) scoreChartInstance.destroy();
+        scoreChartInstance = new Chart(document.getElementById('scoreChart').getContext('2d'), { type: 'line', data: { labels, datasets }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 100 } } } });
+
+        const gwaLabels = []; db.fullBoardHistory.forEach(h => { if(!gwaLabels.includes(h.date)) gwaLabels.push(h.date); }); gwaLabels.sort();
+        const gwaData = gwaLabels.map(date => { const dayRecs = db.fullBoardHistory.filter(h => h.date === date); return dayRecs.length ? dayRecs.reduce((a,c)=>a+c.pct,0)/dayRecs.length : null; });
+        if(gwaChartInstance) gwaChartInstance.destroy();
+        gwaChartInstance = new Chart(document.getElementById('gwaChart').getContext('2d'), { type: 'line', data: { labels: gwaLabels, datasets: [{ label: 'Full Board GWA %', data: gwaData, borderColor: colors.Overall, backgroundColor: colors.Overall, tension: 0.3, spanGaps: true }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 100 } } } });
+
+        const tagContainer = document.getElementById('weak-tags-container'); tagContainer.innerHTML = '';
+        ['Math', 'GEAS', 'ELECS', 'ESAT'].forEach(subj => {
+            let tagCounts = {}; db[subj].mistakes.forEach(q => { q.tags.forEach(tag => { tagCounts[tag] = (tagCounts[tag] || 0) + 1; }); });
+            let sortedTags = Object.entries(tagCounts).sort((a,b) => b[1]-a[1]).slice(0,3);
+            if(sortedTags.length > 0) tagContainer.innerHTML += `<div style="margin-bottom:10px;"><b>${subj}:</b> ${sortedTags.map(t => `<span class="tag" style="background: var(--wrong-bg); color: var(--wrong);">#${t[0]} (${t[1]} errors)</span>`).join('')}</div>`;
+        });
+        if(tagContainer.innerHTML === '') tagContainer.innerHTML = '<p>No tag data available yet.</p>';
+    }
+
+    function executeSearch() {
+        const term = document.getElementById('global-search-input').value.toLowerCase(); const container = document.getElementById('search-results-container'); container.innerHTML = '';
+        if(term.length < 2) return; let results = [];
+        ['Math', 'GEAS', 'ELECS', 'ESAT'].forEach(subj => { db[subj].sets.forEach(set => { set.questions.forEach(q => { if(q.text.toLowerCase().includes(term) || q.tags.some(t => t.toLowerCase().includes(term))) results.push({subj, setName: set.name, q}); }); }); });
+        if(results.length === 0) { container.innerHTML = '<p>No matching questions found.</p>'; return; }
+        let html = `<p>Found ${results.length} matches.</p>`;
+        results.slice(0, 50).forEach(res => {
+            let correctOpt = res.q.options.find(o => o.letter === res.q.answer);
+            html += `<div class="card" style="border-left: 4px solid var(--primary);"><div style="font-size:0.8rem; color:var(--text-light); margin-bottom:5px;">${res.subj} > ${res.setName}</div><div style="font-weight:bold; margin-bottom: 10px;">${res.q.text}</div>${res.q.image ? `<img src="${res.q.image}" class="q-image" style="max-height: 150px;">` : ''}<div style="background: var(--correct-bg); color: var(--correct); padding: 8px; border-radius: 4px; font-weight: 500;">Ans: ${correctOpt ? correctOpt.text : 'Unknown'}</div></div>`;
+        });
+        container.innerHTML = html; renderMathInElement(container, { delimiters: [ {left: "$$", right: "$$", display: true}, {left: "$", right: "$", display: false} ] });
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if(!examState.active) return; const key = e.key.toUpperCase();
+        if(['A','B','C','D'].includes(key)) { const label = document.querySelector(`#opts-${examState.currentIndex} label input[value="${key}"]`); if(label) label.parentNode.click(); }
+        if(e.key === 'ArrowRight') navQuestion(1); if(e.key === 'ArrowLeft') navQuestion(-1);
+    });
+
+    function exportData() { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db)); const anchor = document.createElement('a'); anchor.setAttribute("href", dataStr); anchor.setAttribute("download", `ece_backup_${new Date().toISOString().split('T')[0]}.json`); document.body.appendChild(anchor); anchor.click(); anchor.remove(); }
+    function importData() { const file = document.getElementById('import-file').files[0]; if(!file) return alert("Select a file first."); const reader = new FileReader(); reader.onload = function(e) { try { const imported = JSON.parse(e.target.result); if(imported.Math && imported.GEAS) { db = imported; if(!db.links) db.links = []; saveData(); syncMistakes(); alert("Data restored!"); location.reload(); } else throw new Error("Invalid format"); } catch (err) { alert("Error reading file."); } }; reader.readAsText(file); }
+    function clearAllData() { if(confirm("WARNING: This will permanently delete ALL data. Proceed?")) { localStorage.removeItem(STORAGE_KEY); location.reload(); } }
+
+    window.onload = () => { loadData(); switchView('view-home'); };
+</script>
+
+</body>
+</html>
